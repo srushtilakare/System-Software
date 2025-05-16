@@ -1,0 +1,130 @@
+symbol.l
+
+%{
+#include <stdio.h>
+#include "y.tab.h"
+extern int yylval;
+extern char *yytext;
+%}
+
+LABEL   [A-Z][A-Z0-9]*
+MNEMONIC MOVER|MOVEM|ADD|SUB|MULT|BC|COMP|READ|PRINT|DC|DS|START|END
+REG      AREG|BREG|CREG
+NUM      [0-9]+
+IDENT    [A-Z][A-Z0-9]*
+
+%%
+
+{MNEMONIC}  return MNEMONIC;
+{REG}       return REG;
+{NUM}       { yylval = atoi(yytext); return NUM; }
+{LABEL}     return LABEL;
+[,\n\t ]    ; // ignore
+.           ; // ignore
+%%
+int yywrap() { return 1; }
+
+_________________________________
+
+symbol.y
+
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int lc = 0; // location counter
+
+struct symtab {
+    char label[20];
+    int addr;
+} sym[50];
+
+int symIndex = 0;
+
+void insertSymbol(char *label) {
+    for (int i = 0; i < symIndex; i++) {
+        if (strcmp(sym[i].label, label) == 0) return; // avoid duplicates
+    }
+    strcpy(sym[symIndex].label, label);
+    sym[symIndex].addr = lc;
+    symIndex++;
+}
+
+int yylex();
+int yyerror();
+%}
+
+%token LABEL MNEMONIC REG NUM
+
+%%
+
+program : START_STMT lines END_STMT {
+            printf("\n✅ Pass 1 completed!\n");
+            printf("\n📘 Symbol Table:\n---------------------\n");
+            printf("LABEL\tADDRESS\n");
+            printf("---------------------\n");
+            for(int i = 0; i < symIndex; i++) {
+                printf("%s\t%d\n", sym[i].label, sym[i].addr);
+            }
+        }
+;
+
+START_STMT : MNEMONIC NUM {
+                lc = $2; // set location counter from START
+            }
+;
+
+END_STMT : MNEMONIC
+;
+
+lines : lines line
+      | line
+;
+
+line : LABEL MNEMONIC REG ',' IDENT {
+            insertSymbol($1);
+            lc++;
+        }
+     | MNEMONIC REG ',' IDENT {
+            lc++;
+        }
+     | LABEL MNEMONIC NUM {
+            insertSymbol($1);
+            lc++;
+        }
+     | MNEMONIC IDENT {
+            lc++;
+        }
+     | LABEL MNEMONIC {
+            insertSymbol($1);
+            lc++;
+        }
+;
+
+%%
+
+int yyerror() {
+    printf("❌ Syntax Error!\n");
+    return 1;
+}
+
+int main() {
+    yyparse();
+    return 0;
+}
+
+_______________________________________
+
+sample input file
+
+START 100
+LOOP   MOVER AREG, NUM
+       ADD   AREG, ONE
+       MOVEM AREG, NUM
+       END
+NUM    DS 1
+ONE    DC 1
+
+
+run command: lex symbol.l && yacc -d symbol.y && gcc lex.yy.c y.tab.c -o symbol && ./symbol < input.asm
