@@ -1,0 +1,39 @@
+%{
+#include <stdio.h>
+%}
+
+letter      [A-Za-z]
+digit       [0-9]
+identifier  {letter}({letter}|{digit})*
+number      {digit}+(\.{digit}+)?  // integer or decimal
+operators   [\+\-\*/=<>!]
+
+%%
+
+{operators}         { printf("Operator: %s\n", yytext); }
+{identifier}        { printf("Identifier: %s\n", yytext); }
+{number}            { printf("Number: %s\n", yytext); }
+[\t\n ]+            ;  // ignore whitespace
+.                   { printf("Unknown token: %s\n", yytext); }
+
+%%
+
+int main()
+{
+    yylex();
+    return 0;
+}
+
+int yywrap()
+{
+    return 1;
+}
+
+Sample Input: a = b + 42;
+
+____________________________
+Run Commands:
+
+lex op_pattern.l
+gcc lex.yy.c -o op_pattern
+./op_pattern < input.txt
