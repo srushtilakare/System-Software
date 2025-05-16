@@ -1,0 +1,42 @@
+%{
+#include <stdio.h>
+%}
+
+// Regular expressions
+digit       [0-9]
+integer     {digit}+
+float       {digit}+"."{digit}+
+
+%%
+
+{float}     { printf("Float number: %s\n", yytext); }
+{integer}   { printf("Integer number: %s\n", yytext); }
+[\t\n ]+    ;   // ignore whitespace
+.           { printf("Invalid input: %s\n", yytext); }
+
+%%
+
+int main()
+{
+    yylex();
+    return 0;
+}
+
+int yywrap()
+{
+    return 1;
+}
+
+________________________________
+
+Sample Input :
+42
+3.14
+100
+7.0
+abc
+
+Commands: 
+lex num_detect.l
+gcc lex.yy.c -o num_detect
+./num_detect
